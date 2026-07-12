@@ -47,10 +47,10 @@ export class LookiSettingTab extends PluginSettingTab {
       .setDesc("每日记忆笔记写入的 vault 内相对路径")
       .addText((t) =>
         t
-          .setPlaceholder("00_灵感库/平台导入/Looki/每日记忆")
+          .setPlaceholder("Looki/每日记忆")
           .setValue(s.notesFolder)
           .onChange(async (v) => {
-            s.notesFolder = v.trim() || "00_灵感库/平台导入/Looki/每日记忆";
+            s.notesFolder = v.trim() || "Looki/每日记忆";
             await this.plugin.saveSettings();
           })
       );
@@ -60,10 +60,10 @@ export class LookiSettingTab extends PluginSettingTab {
       .setDesc("图片/视频下载保存的 vault 内相对路径（媒体开关开启时生效）")
       .addText((t) =>
         t
-          .setPlaceholder("00_灵感库/平台导入/Looki/media")
+          .setPlaceholder("Looki/media")
           .setValue(s.mediaFolder)
           .onChange(async (v) => {
-            s.mediaFolder = v.trim() || "00_灵感库/平台导入/Looki/media";
+            s.mediaFolder = v.trim() || "Looki/media";
             await this.plugin.saveSettings();
           })
       );

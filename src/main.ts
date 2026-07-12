@@ -10,8 +10,8 @@ import {
 import { LookiSettingTab } from "./settings";
 
 const DEFAULT_BASE = "https://open.looki.tech/api/v1";
-const DEFAULT_NOTES = "00_灵感库/平台导入/Looki/每日记忆";
-const DEFAULT_MEDIA = "00_灵感库/平台导入/Looki/media";
+const DEFAULT_NOTES = "Looki/每日记忆";
+const DEFAULT_MEDIA = "Looki/media";
 
 export interface LookiSettings {
   apiKey: string;

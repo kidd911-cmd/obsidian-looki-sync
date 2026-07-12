@@ -144,14 +144,14 @@ var LookiSettingTab = class extends import_obsidian2.PluginSettingTab {
       })
     );
     new import_obsidian2.Setting(containerEl).setName("\u76EE\u6807\u6587\u4EF6\u5939").setDesc("\u6BCF\u65E5\u8BB0\u5FC6\u7B14\u8BB0\u5199\u5165\u7684 vault \u5185\u76F8\u5BF9\u8DEF\u5F84").addText(
-      (t) => t.setPlaceholder("00_\u7075\u611F\u5E93/\u5E73\u53F0\u5BFC\u5165/Looki/\u6BCF\u65E5\u8BB0\u5FC6").setValue(s.notesFolder).onChange(async (v) => {
-        s.notesFolder = v.trim() || "00_\u7075\u611F\u5E93/\u5E73\u53F0\u5BFC\u5165/Looki/\u6BCF\u65E5\u8BB0\u5FC6";
+      (t) => t.setPlaceholder("Looki/\u6BCF\u65E5\u8BB0\u5FC6").setValue(s.notesFolder).onChange(async (v) => {
+        s.notesFolder = v.trim() || "Looki/\u6BCF\u65E5\u8BB0\u5FC6";
         await this.plugin.saveSettings();
       })
     );
     new import_obsidian2.Setting(containerEl).setName("\u5A92\u4F53\u6587\u4EF6\u5939").setDesc("\u56FE\u7247/\u89C6\u9891\u4E0B\u8F7D\u4FDD\u5B58\u7684 vault \u5185\u76F8\u5BF9\u8DEF\u5F84\uFF08\u5A92\u4F53\u5F00\u5173\u5F00\u542F\u65F6\u751F\u6548\uFF09").addText(
-      (t) => t.setPlaceholder("00_\u7075\u611F\u5E93/\u5E73\u53F0\u5BFC\u5165/Looki/media").setValue(s.mediaFolder).onChange(async (v) => {
-        s.mediaFolder = v.trim() || "00_\u7075\u611F\u5E93/\u5E73\u53F0\u5BFC\u5165/Looki/media";
+      (t) => t.setPlaceholder("Looki/media").setValue(s.mediaFolder).onChange(async (v) => {
+        s.mediaFolder = v.trim() || "Looki/media";
         await this.plugin.saveSettings();
       })
     );
@@ -213,8 +213,8 @@ var LookiSettingTab = class extends import_obsidian2.PluginSettingTab {
 
 // src/main.ts
 var DEFAULT_BASE = "https://open.looki.tech/api/v1";
-var DEFAULT_NOTES = "00_\u7075\u611F\u5E93/\u5E73\u53F0\u5BFC\u5165/Looki/\u6BCF\u65E5\u8BB0\u5FC6";
-var DEFAULT_MEDIA = "00_\u7075\u611F\u5E93/\u5E73\u53F0\u5BFC\u5165/Looki/media";
+var DEFAULT_NOTES = "Looki/\u6BCF\u65E5\u8BB0\u5FC6";
+var DEFAULT_MEDIA = "Looki/media";
 var DEFAULT_SETTINGS = {
   apiKey: "",
   baseUrl: DEFAULT_BASE,
