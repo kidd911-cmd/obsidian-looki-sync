@@ -130,7 +130,7 @@ var LookiSettingTab = class extends import_obsidian2.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     const s = this.plugin.settings;
-    new import_obsidian2.Setting(containerEl).setName("Looki Sync \u8BBE\u7F6E").setHeading();
+    new import_obsidian2.Setting(containerEl).setName("\u8BBE\u7F6E").setHeading();
     new import_obsidian2.Setting(containerEl).setName("API Key").setDesc("Looki \u5F00\u653E API \u5BC6\u94A5\uFF0C\u5F62\u5982 lk-xxxx").addText(
       (t) => t.setPlaceholder("lk-...").setValue(s.apiKey).onChange(async (v) => {
         s.apiKey = v.trim();

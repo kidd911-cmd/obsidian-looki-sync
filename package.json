@@ -1,6 +1,6 @@
 {
   "name": "obsidian-looki-sync",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Sync Looki Moments and For You into daily memory notes, with optional image/video sync.",
   "main": "main.js",
   "scripts": {
