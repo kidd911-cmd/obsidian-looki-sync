@@ -1,4 +1,6 @@
-# Looki Sync（Obsidian 社区插件）
+# Looki Sync
+
+An Obsidian community plugin that syncs [Looki](https://web.looki.tech) **Moments** (daily records) and **For You** (AI prompts) into date-based daily memory notes. Inspired by the design of Flomo Sync and similar sync plugins.
 
 把 [Looki](https://web.looki.tech) 的**日常数据（Moments）**与**即时提示（For You）**同步进 Obsidian，合并为按日期的「每日记忆」笔记。参考 [Flomo Sync](https://pkmer.cn/show/1780392511104000) 类插件的设计思路。
 
@@ -64,14 +66,19 @@ npm run build      # 生成 main.js
 
 > 想实时调试：先 `npm run dev`（esbuild watch 模式），Obsidian 里对插件点「重新加载」即可热更。
 
-## 上架到 Obsidian 社区市场
+## Publish to Obsidian Community Plugin Directory
 
-Obsidian 社区插件通过 [obsidian-releases](https://github.com/obsidianmd/obsidian-releases) 仓库的 PR 审核发布。正式上架前需准备：
+1. Prepare a public GitHub repo with `manifest.json`, `main.js`, `styles.css`, `README.md`, source (`src/`), and build config.
+2. Create a GitHub Release (e.g. `1.0.0`) and attach `main.js`, `manifest.json`, and `styles.css` as release assets.
+3. Go to [community.obsidian.md](https://community.obsidian.md), sign in with your GitHub account, then navigate to **Plugins → New plugin** and submit the repository URL.
+4. Wait for the automated validation and the Obsidian team review. Once approved, the plugin will be searchable in Obsidian's Community Plugins browser.
 
-1. **公开 GitHub 仓库**，根目录包含：`manifest.json`、`main.js`、`styles.css`、`README.md`、源码（`src/`）、构建配置。
-2. **发布一个 Release**（如 `v1.0.0`），把 `main.js` / `manifest.json` / `styles.css` 作为 release asset 或直接在仓库根目录（社区审核读取仓库根目录文件）。
-3. **提交 PR** 到 `obsidianmd/obsidian-releases` 的 `.github` 工作流程，按官方模板添加你的插件信息（id、repo、分支/tag）。
-4. 等待官方人工审核（通常数天到数周）。审核通过即出现在社区插件市场搜索中。
+## 上架到 Obsidian 社区插件市场
+
+1. 准备公开 GitHub 仓库，根目录包含：`manifest.json`、`main.js`、`styles.css`、`README.md`、源码（`src/`）、构建配置。
+2. 发布一个 GitHub Release（如 `1.0.0`），把 `main.js` / `manifest.json` / `styles.css` 作为 release asset 上传。
+3. 前往 [community.obsidian.md](https://community.obsidian.md)，登录并关联 GitHub 账号，进入 **Plugins → New plugin** 提交仓库地址。
+4. 等待系统自动扫描与 Obsidian 团队人工审核。审核通过后即出现在社区插件市场搜索中。
 
 ### 上架前自查清单
 
