@@ -14,7 +14,7 @@ export class LookiSettingTab extends PluginSettingTab {
     containerEl.empty();
     const s = this.plugin.settings;
 
-    containerEl.createEl("h2", { text: "Looki Sync 设置" });
+    new Setting(containerEl).setName("Looki Sync 设置").setHeading();
 
     new Setting(containerEl)
       .setName("API Key")

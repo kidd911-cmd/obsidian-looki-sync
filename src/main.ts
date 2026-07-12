@@ -58,15 +58,15 @@ export default class LookiSyncPlugin extends Plugin {
     await this.loadDataAll();
     this.addSettingTab(new LookiSettingTab(this.app, this));
     this.addRibbonIcon("refresh-cw", "Looki Sync", () => this.syncNow());
-    this.addCommand({ id: "looki-sync-now", name: "Sync now", callback: () => this.syncNow() });
+    this.addCommand({ id: "sync-now", name: "Sync now", callback: () => this.syncNow() });
     this.addCommand({
-      id: "looki-full-resync",
+      id: "full-resync",
       name: "Full resync (reset history)",
       callback: () => this.fullResync(),
     });
     this.statusBar = this.addStatusBarItem();
     this.updateStatusBar("就绪");
-    if (this.settings.syncOnStartup) this.syncNow();
+    if (this.settings.syncOnStartup) await this.syncNow();
     this.restartAutoSync();
   }
 

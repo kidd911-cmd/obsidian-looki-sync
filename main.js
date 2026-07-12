@@ -130,7 +130,7 @@ var LookiSettingTab = class extends import_obsidian2.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     const s = this.plugin.settings;
-    containerEl.createEl("h2", { text: "Looki Sync \u8BBE\u7F6E" });
+    new import_obsidian2.Setting(containerEl).setName("Looki Sync \u8BBE\u7F6E").setHeading();
     new import_obsidian2.Setting(containerEl).setName("API Key").setDesc("Looki \u5F00\u653E API \u5BC6\u94A5\uFF0C\u5F62\u5982 lk-xxxx").addText(
       (t) => t.setPlaceholder("lk-...").setValue(s.apiKey).onChange(async (v) => {
         s.apiKey = v.trim();
@@ -236,15 +236,15 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
     await this.loadDataAll();
     this.addSettingTab(new LookiSettingTab(this.app, this));
     this.addRibbonIcon("refresh-cw", "Looki Sync", () => this.syncNow());
-    this.addCommand({ id: "looki-sync-now", name: "Sync now", callback: () => this.syncNow() });
+    this.addCommand({ id: "sync-now", name: "Sync now", callback: () => this.syncNow() });
     this.addCommand({
-      id: "looki-full-resync",
+      id: "full-resync",
       name: "Full resync (reset history)",
       callback: () => this.fullResync()
     });
     this.statusBar = this.addStatusBarItem();
     this.updateStatusBar("\u5C31\u7EEA");
-    if (this.settings.syncOnStartup) this.syncNow();
+    if (this.settings.syncOnStartup) await this.syncNow();
     this.restartAutoSync();
   }
   onunload() {
