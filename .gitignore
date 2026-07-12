@@ -1,0 +1,12 @@
+# Build / dependencies
+node_modules/
+
+# Obsidian / editor
+.obsidian/
+*.log
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Keep main.js / manifest.json / styles.css tracked (they are the published artifact)

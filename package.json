@@ -1,0 +1,26 @@
+{
+  "name": "obsidian-looki-sync",
+  "version": "1.0.0",
+  "description": "Sync Looki daily moments and AI For You prompts into Obsidian as dated notes.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "version": "node version-bump.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "looki",
+    "sync"
+  ],
+  "author": "Jeremy Jin",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.23.0",
+    "obsidian": "^1.7.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.4.0"
+  }
+}
