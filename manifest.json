@@ -1,7 +1,7 @@
 {
   "id": "looki-sync",
   "name": "Looki Sync",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "minAppVersion": "1.1.0",
   "description": "Sync Looki Moments and For You into daily memory notes, with optional image/video sync.",
   "author": "Jeremy Jin",

@@ -309,6 +309,7 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
   }
   // ---------- 单日合并同步 ----------
   async syncDay(client, date, foryouItems) {
+    await this.ensureFolder(this.settings.notesFolder);
     const moments = await client.momentsOnDate(date);
     const mBlocks = [];
     for (const m of moments) {
@@ -346,9 +347,9 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
       if (mt === "VIDEO" && !this.settings.syncVideos) continue;
       if (mt !== "IMAGE" && mt !== "VIDEO") continue;
       i++;
-      const ext = mt === "VIDEO" ? "mp4" : "jpg";
-      const rel = `${this.settings.mediaFolder}/${date}/${momentId}_${i}.${ext}`;
-      const emb = await this.downloadOne(file.temporary_url, rel);
+      const kind = mt === "VIDEO" ? "video" : "image";
+      const relBase = `${this.settings.mediaFolder}/${date}/${momentId}_${i}`;
+      const emb = await this.downloadOne(file.temporary_url, relBase, kind);
       if (emb) embeds.push(emb);
     }
     return embeds;
@@ -357,22 +358,54 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
     if (!this.settings.syncImages) return [];
     const cover = it.cover;
     if ((cover == null ? void 0 : cover.media_type) === "IMAGE" && cover.temporary_url) {
-      const rel = `${this.settings.mediaFolder}/${date}/${it.id}_cover.jpg`;
-      const emb = await this.downloadOne(cover.temporary_url, rel);
+      const relBase = `${this.settings.mediaFolder}/${date}/${it.id}_cover`;
+      const emb = await this.downloadOne(cover.temporary_url, relBase, "image");
       if (emb) return [emb];
     }
     return [];
   }
-  async downloadOne(url, relPath) {
+  async downloadOne(url, relBase, kind) {
+    var _a;
     try {
-      if (await this.app.vault.adapter.exists(relPath)) return `![[${relPath}]]`;
+      let ext = extFromUrl(url);
+      const relFromUrl = ext ? `${relBase}.${ext}` : "";
+      if (relFromUrl && await this.app.vault.adapter.exists(relFromUrl))
+        return this.mediaEmbed(relFromUrl, kind);
       const resp = await (0, import_obsidian3.requestUrl)({ url, method: "GET" });
       if (resp.status >= 400) throw new Error("HTTP " + resp.status);
+      if (!ext) {
+        const ct = resp.headers && (resp.headers["content-type"] || resp.headers["Content-Type"]) || "";
+        ext = (_a = extFromContentType(String(ct).toLowerCase())) != null ? _a : kind === "video" ? "mp4" : "jpg";
+      }
+      const relPath = `${relBase}.${ext}`;
+      await this.ensureFolder(this.dirname(relPath));
       await this.app.vault.adapter.writeBinary(relPath, resp.arrayBuffer);
-      return `![[${relPath}]]`;
+      return this.mediaEmbed(relPath, kind);
     } catch (e) {
-      console.warn("Looki \u5A92\u4F53\u4E0B\u8F7D\u5931\u8D25", relPath, e);
+      console.warn("Looki \u5A92\u4F53\u4E0B\u8F7D\u5931\u8D25", url, e);
       return null;
+    }
+  }
+  mediaEmbed(relPath, kind) {
+    const icon = kind === "video" ? "\u{1F3AC}" : "\u{1F5BC}\uFE0F";
+    return `${icon} ![[${relPath}]]`;
+  }
+  dirname(p) {
+    const idx = p.lastIndexOf("/");
+    return idx >= 0 ? p.slice(0, idx) : "";
+  }
+  async ensureFolder(folder) {
+    if (!folder) return;
+    const parts = folder.split("/").filter(Boolean);
+    let cur = "";
+    for (const p of parts) {
+      cur = cur ? `${cur}/${p}` : p;
+      if (!await this.app.vault.adapter.exists(cur)) {
+        try {
+          await this.app.vault.createFolder(cur);
+        } catch (e) {
+        }
+      }
     }
   }
   // ---------- 数据获取辅助 ----------
@@ -487,3 +520,25 @@ date: ${date}
     return `${y}-${m}-${day}`;
   }
 };
+function extFromUrl(url) {
+  try {
+    const base = new URL(url).pathname.split("/").pop() || "";
+    const m = base.match(/\.([a-z0-9]+)$/i);
+    if (m) {
+      const e = m[1].toLowerCase();
+      return e === "jpeg" ? "jpg" : e;
+    }
+  } catch (e) {
+  }
+  return null;
+}
+function extFromContentType(ct) {
+  if (ct.includes("png")) return "png";
+  if (ct.includes("jpeg") || ct.includes("jpg")) return "jpg";
+  if (ct.includes("webp")) return "webp";
+  if (ct.includes("heic") || ct.includes("heif")) return "heic";
+  if (ct.includes("gif")) return "gif";
+  if (ct.includes("mp4")) return "mp4";
+  if (ct.includes("quicktime") || ct.includes("mov")) return "mov";
+  return null;
+}
