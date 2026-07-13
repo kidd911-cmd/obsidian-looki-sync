@@ -402,7 +402,7 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
       cur = cur ? `${cur}/${p}` : p;
       if (!await this.app.vault.adapter.exists(cur)) {
         try {
-          await this.app.vault.createFolder(cur);
+          await this.app.vault.adapter.mkdir(cur);
         } catch (e) {
         }
       }

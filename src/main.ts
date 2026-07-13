@@ -241,8 +241,8 @@ export default class LookiSyncPlugin extends Plugin {
       cur = cur ? `${cur}/${p}` : p;
       if (!(await this.app.vault.adapter.exists(cur))) {
         try {
-          await this.app.vault.createFolder(cur);
-        } catch (e) {
+          await this.app.vault.adapter.mkdir(cur);
+        } catch {
           // 已存在（并发创建）则忽略
         }
       }
