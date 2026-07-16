@@ -23,6 +23,17 @@ An Obsidian community plugin that syncs [Looki](https://web.looki.tech) **Moment
   - `## 即时提示 (For You)` —— 当天 Looki 主动生成的 AI 内容
 - **幂等/自愈**：每篇笔记每次都按当前 API 数据整篇重写，不会重复堆积；Looki 端增删会反映在下一次同步。
 
+## 百度网盘备份（Baidu Netdisk Backup）
+
+可以把下载到的 Looki 图片 / 视频**额外上传到你的百度网盘**，作为一份云端备份。
+
+- **不落本地**：默认只传百度、vault 不保留媒体文件（省 iCloud 空间）。笔记里会留下「📁 已备份百度网盘：/LookiSync/media/...」一行说明，图片本身要到百度网盘 App 里看。
+- **保留本地副本**：设置里打开「保留本地副本」后，媒体也会存进 vault 并用 `![[...]]` 显示（与之前版本行为一致）。
+- **一次性授权**：在百度网盘开放平台创建应用拿到 API Key / Secret，回到本插件设置页点「① 打开授权页」→ 浏览器登录同意 → 复制地址栏 `?code=` 后的内容 → 粘贴到「粘贴授权 code」→ 点「③ 完成授权」即可。token 存在本机，过期自动刷新。
+- 媒体按 `4MB` 分片流式上传，已传过的不会重复传（去重记录在插件 data 里）。
+
+> 百度网盘路径默认 `/LookiSync/media`（根目录下的文件夹）。若你的应用被限制在 `/apps` 下，把设置里的「百度网盘目录」改成 `/apps/LookiSync/media`。
+
 ## 设置项
 
 | 设置 | 默认 | 说明 |
@@ -30,12 +41,17 @@ An Obsidian community plugin that syncs [Looki](https://web.looki.tech) **Moment
 | API Key | 空 | Looki 开放 API 密钥 `lk-xxxx` |
 | API Base URL | `https://open.looki.tech/api/v1` | 一般无需改 |
 | 目标文件夹 | `Looki/每日记忆` | 每日记忆笔记目录 |
-| 媒体文件夹 | `Looki/media` | 图片/视频保存目录 |
-| 同步图片 | 开 | 下载 IMAGE 并嵌入 |
-| 同步视频 | 关 | 下载 VIDEO 并嵌入（体积大） |
+| 媒体文件夹 | `Looki/media` | 图片/视频保存目录（开启「保留本地副本」时生效） |
+| 同步图片 | 开 | 下载 IMAGE 并嵌入 / 备份 |
+| 同步视频 | 关 | 下载 VIDEO 并嵌入 / 备份（体积大） |
 | 回填天数 | 1 | 每次额外补最近 N 天（兼顾延迟生成内容） |
 | 自动同步间隔（分钟） | 30 | 0 = 关闭 |
 | 启动时自动同步 | 关 | Obsidian 打开即同步一次 |
+| 同步到百度网盘 | 关 | 把媒体上传到百度网盘做备份 |
+| 保留本地副本 | 关 | 同时把媒体存进 vault（笔记可显示图片） |
+| 百度 API Key | 空 | 百度网盘开放平台的 AppKey（client_id） |
+| 百度 Secret Key | 空 | 百度网盘开放平台的 Secretkey（client_secret） |
+| 百度网盘目录 | `/LookiSync/media` | 媒体上传到的百度网盘路径 |
 
 ## 命令
 
@@ -89,7 +105,7 @@ npm run build      # 生成 main.js
 - [ ] 不读取/上传用户其他笔记内容；只用 Looki API
 - [ ] 已自测：手动同步、自动同步、增量去重、媒体开关开/关
 
-> 隐私提示：插件把 API Key 存在 vault 的 `data.json`（Obsidian 插件数据目录），不会外传。网络请求只发往 Looki API 与媒体 CDN。
+> 隐私提示：插件的 API Key、百度网盘 Key / Secret / token 都只存在 vault 的 `data.json`（Obsidian 插件数据目录），不会外传、不上传 GitHub。网络请求只发往 Looki API、媒体 CDN 与百度网盘开放平台（仅在你开启「同步到百度网盘」并授权后）。
 
 ## 开发
 

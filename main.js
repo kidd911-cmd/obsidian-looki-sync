@@ -26,7 +26,7 @@ __export(main_exports, {
   default: () => LookiSyncPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/looki.ts
 var import_obsidian = require("obsidian");
@@ -124,6 +124,7 @@ var import_obsidian2 = require("obsidian");
 var LookiSettingTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
+    this.baiduCodeInput = "";
     this.plugin = plugin;
   }
   display() {
@@ -208,8 +209,348 @@ var LookiSettingTab = class extends import_obsidian2.PluginSettingTab {
         await this.plugin.fullResync();
       })
     );
+    new import_obsidian2.Setting(containerEl).setName("\u767E\u5EA6\u7F51\u76D8\u5907\u4EFD").setHeading();
+    new import_obsidian2.Setting(containerEl).setName("\u540C\u6B65\u5230\u767E\u5EA6\u7F51\u76D8").setDesc("\u628A Looki \u56FE\u7247/\u89C6\u9891\u4E0A\u4F20\u5230\u4F60\u7684\u767E\u5EA6\u7F51\u76D8\u505A\u5907\u4EFD\uFF08vault \u4E0D\u4FDD\u7559\u672C\u5730\u6587\u4EF6\uFF09").addToggle(
+      (t) => t.setValue(s.syncBaidu).onChange(async (v) => {
+        s.syncBaidu = v;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian2.Setting(containerEl).setName("\u4FDD\u7559\u672C\u5730\u526F\u672C").setDesc("\u540C\u65F6\u628A\u5A92\u4F53\u5B58\u8FDB vault\uFF08\u7B14\u8BB0\u91CC\u80FD\u663E\u793A\u56FE\u7247\uFF09\u3002\u5173\u95ED = \u53EA\u4F20\u767E\u5EA6\u3001vault \u4E0D\u7559\uFF08\u7701 iCloud \u7A7A\u95F4\uFF09").addToggle(
+      (t) => t.setValue(s.keepLocalCopy).onChange(async (v) => {
+        s.keepLocalCopy = v;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian2.Setting(containerEl).setName("\u767E\u5EA6 API Key").setDesc("\u767E\u5EA6\u7F51\u76D8\u5F00\u653E\u5E73\u53F0\u7684 AppKey\uFF08client_id\uFF09").addText(
+      (t) => t.setPlaceholder("AppKey").setValue(s.baiduClientId).onChange(async (v) => {
+        s.baiduClientId = v.trim();
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian2.Setting(containerEl).setName("\u767E\u5EA6 Secret Key").setDesc("\u767E\u5EA6\u7F51\u76D8\u5F00\u653E\u5E73\u53F0\u7684 Secretkey\uFF08client_secret\uFF09").addText(
+      (t) => t.setPlaceholder("Secretkey").setValue(s.baiduClientSecret).onChange(async (v) => {
+        s.baiduClientSecret = v.trim();
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian2.Setting(containerEl).setName("\u767E\u5EA6\u7F51\u76D8\u76EE\u5F55").setDesc("\u5A92\u4F53\u4E0A\u4F20\u5230\u7684\u767E\u5EA6\u7F51\u76D8\u8DEF\u5F84\uFF08\u9ED8\u8BA4 /LookiSync/media\uFF09").addText(
+      (t) => t.setPlaceholder("/LookiSync/media").setValue(s.baiduRemoteDir).onChange(async (v) => {
+        s.baiduRemoteDir = v.trim() || "/LookiSync/media";
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian2.Setting(containerEl).setName("\u6388\u6743\u767E\u5EA6\u7F51\u76D8").setDesc("\u2460 \u70B9\u201C\u6253\u5F00\u6388\u6743\u9875\u201D\u767B\u5F55\u5E76\u540C\u610F \u2192 \u6D4F\u89C8\u5668\u5730\u5740\u680F\u663E\u793A ?code=xxx \u2192 \u590D\u5236 \u2192 \u7C98\u8D34\u5230\u4E0B\u65B9 \u2192 \u70B9\u201C\u5B8C\u6210\u6388\u6743\u201D").addButton(
+      (b) => b.setButtonText("\u2460 \u6253\u5F00\u6388\u6743\u9875").onClick(async () => {
+        await this.plugin.openBaiduAuth();
+      })
+    );
+    new import_obsidian2.Setting(containerEl).setName("\u7C98\u8D34\u6388\u6743 code").addText(
+      (t) => t.setPlaceholder("code= \u540E\u9762\u7684\u5B57\u7B26\u4E32").setValue(this.baiduCodeInput).onChange(async (v) => {
+        this.baiduCodeInput = v.trim();
+      })
+    ).addButton(
+      (b) => b.setButtonText("\u2462 \u5B8C\u6210\u6388\u6743").setCta().onClick(async () => {
+        if (!this.baiduCodeInput) {
+          this.plugin.notice("\u8BF7\u5148\u7C98\u8D34 code");
+          return;
+        }
+        try {
+          await this.plugin.baiduExchange(this.baiduCodeInput);
+          this.baiduCodeInput = "";
+          this.plugin.notice("\u767E\u5EA6\u6388\u6743\u6210\u529F \u2705");
+          this.display();
+        } catch (e) {
+          this.plugin.notice("\u6388\u6743\u5931\u8D25\uFF1A" + e.message);
+        }
+      })
+    );
+    new import_obsidian2.Setting(containerEl).setName("\u6388\u6743\u72B6\u6001").setDesc(this.plugin.baiduTokenStatus());
   }
 };
+
+// src/baidu.ts
+var import_obsidian3 = require("obsidian");
+var BAIDU_TOKEN_URL = "https://openapi.baidu.com/oauth/2.0/token";
+var BAIDU_AUTH_URL = "https://openapi.baidu.com/oauth/2.0/authorize";
+var BAIDU_PRECREATE = "https://pan.baidu.com/rest/2.0/xpan/file?method=precreate";
+var BAIDU_CREATE = "https://pan.baidu.com/rest/2.0/xpan/file?method=create";
+var BAIDU_UPLOAD = "https://d.pcs.baidu.com/rest/2.0/pcs/file?method=upload";
+var SLICE = 4 * 1024 * 1024;
+var BAIDU_ERRORS = {
+  31064: "\u5E94\u7528\u672A\u5BA1\u6838\uFF1A\u53BB\u767E\u5EA6\u7F51\u76D8\u5F00\u653E\u5E73\u53F0\u628A\u5E94\u7528\u63D0\u4EA4\u4E0A\u7EBF\u5BA1\u6838\uFF0C\u62FF\u5230\u4E0A\u4F20\u6743\u9650\u540E\u91CD\u8BD5\u3002",
+  31023: "\u53C2\u6570\u9519\u8BEF\uFF1A\u68C0\u67E5\u8BF7\u6C42\u53C2\u6570\u683C\u5F0F\uFF08block_list \u9700 JSON \u5E8F\u5217\u5316\uFF09\u3002",
+  31024: "\u5206\u7247\u4E0A\u4F20\u9519\u8BEF\uFF1A\u68C0\u67E5\u5206\u7247\u5927\u5C0F\u548C\u987A\u5E8F\u3002",
+  31500: "\u521B\u5EFA\u6587\u4EF6\u5931\u8D25\uFF1Auploadid \u65E0\u6548\u6216\u4E0A\u4F20\u672A\u5B8C\u6210\u3002",
+  42e3: "\u8BBF\u95EE\u8FC7\u4E8E\u9891\u7E41\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002"
+};
+function buildBaiduAuthUrl(clientId, deviceId) {
+  const p = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    redirect_uri: "oob",
+    scope: "basic netdisk",
+    device_id: deviceId,
+    display: "popup"
+  });
+  return BAIDU_AUTH_URL + "?" + p.toString();
+}
+async function exchangeCodeForToken(code, clientId, clientSecret, deviceId) {
+  var _a;
+  const url = new URL(BAIDU_TOKEN_URL);
+  url.searchParams.set("grant_type", "authorization_code");
+  url.searchParams.set("code", code.trim());
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("client_secret", clientSecret);
+  url.searchParams.set("redirect_uri", "oob");
+  url.searchParams.set("device_id", deviceId);
+  const resp = await (0, import_obsidian3.requestUrl)({ url: url.toString(), method: "GET" });
+  if (resp.status >= 400) throw new Error("HTTP " + resp.status);
+  const j = JSON.parse(resp.text);
+  if (!j.access_token) throw new Error("\u6362\u53D6 token \u5931\u8D25\uFF1A" + JSON.stringify(j));
+  const expiresIn = typeof j.expires_in === "number" ? j.expires_in : 2592e3;
+  return {
+    access: j.access_token,
+    refresh: (_a = j.refresh_token) != null ? _a : "",
+    expiresAt: Date.now() + expiresIn * 1e3
+  };
+}
+async function refreshBaiduToken(tok, clientId, clientSecret) {
+  var _a;
+  const url = new URL(BAIDU_TOKEN_URL);
+  url.searchParams.set("grant_type", "refresh_token");
+  url.searchParams.set("refresh_token", tok.refresh);
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("client_secret", clientSecret);
+  const resp = await (0, import_obsidian3.requestUrl)({ url: url.toString(), method: "GET" });
+  const j = JSON.parse(resp.text);
+  if (!j.access_token) throw new Error("\u5237\u65B0 token \u5931\u8D25\uFF1A" + JSON.stringify(j));
+  const expiresIn = typeof j.expires_in === "number" ? j.expires_in : 2592e3;
+  return {
+    access: j.access_token,
+    refresh: (_a = j.refresh_token) != null ? _a : tok.refresh,
+    expiresAt: Date.now() + expiresIn * 1e3
+  };
+}
+var BaiduClient = class {
+  constructor(token, clientId, clientSecret, remoteDir, deviceId, onTokenChange) {
+    this.clientId = clientId;
+    this.clientSecret = clientSecret;
+    this.remoteDir = remoteDir;
+    this.deviceId = deviceId;
+    this.onTokenChange = onTokenChange;
+    this.token = token;
+  }
+  async ensureValid() {
+    var _a;
+    if (Date.now() < this.token.expiresAt - 6e4) return;
+    this.token = await refreshBaiduToken(this.token, this.clientId, this.clientSecret);
+    (_a = this.onTokenChange) == null ? void 0 : _a.call(this, this.token);
+  }
+  /** 确保远程目录存在（百度不自动建多级目录） */
+  async ensureRemoteDir() {
+    await this.ensureValid();
+    const url = new URL(BAIDU_CREATE);
+    url.searchParams.set("access_token", this.token.access);
+    url.searchParams.set("path", this.remoteDir);
+    url.searchParams.set("isdir", "1");
+    url.searchParams.set("rtype", "1");
+    url.searchParams.set("mode", "1");
+    const resp = await (0, import_obsidian3.requestUrl)({ url: url.toString(), method: "POST" });
+    const j = JSON.parse(resp.text);
+    const errno = typeof j.errno === "number" ? j.errno : 0;
+    if (errno !== 0 && errno !== -8) {
+      console.warn("[baidu] \u5EFA\u76EE\u5F55\u8FD4\u56DE\uFF08\u53EF\u5FFD\u7565\uFF09", j);
+    }
+  }
+  /** 把字节流上传到百度网盘，返回远程路径。 */
+  async uploadBytes(remoteName, data) {
+    var _a, _b;
+    await this.ensureValid();
+    const bytes = new Uint8Array(data);
+    const remotePath = this.remoteDir.replace(/\/+$/, "") + "/" + remoteName;
+    const blockMd5 = [];
+    const slices = [];
+    for (let off = 0; off < bytes.length; off += SLICE) {
+      const slice = bytes.subarray(off, Math.min(off + SLICE, bytes.length));
+      slices.push(slice.slice().buffer);
+      blockMd5.push(md5hex(slice));
+    }
+    if (blockMd5.length === 0) throw new Error("\u7A7A\u6587\u4EF6\uFF0C\u8DF3\u8FC7");
+    const pre = new URL(BAIDU_PRECREATE);
+    pre.searchParams.set("access_token", this.token.access);
+    pre.searchParams.set("path", remotePath);
+    pre.searchParams.set("size", String(bytes.length));
+    pre.searchParams.set("isdir", "0");
+    pre.searchParams.set("autoinit", "1");
+    pre.searchParams.set("block_list", JSON.stringify(blockMd5));
+    pre.searchParams.set("rtype", "1");
+    const preResp = await (0, import_obsidian3.requestUrl)({ url: pre.toString(), method: "POST" });
+    const pj = JSON.parse(preResp.text);
+    const preno = typeof pj.errno === "number" ? pj.errno : 0;
+    if (preno !== 0) {
+      throw new Error(`precreate \u5931\u8D25(${preno}) ${(_a = BAIDU_ERRORS[preno]) != null ? _a : JSON.stringify(pj).slice(0, 200)}`);
+    }
+    const uploadid = pj.uploadid || pj.data && pj.data.uploadid;
+    if (!uploadid) {
+      if (pj.return_type === 2) return remotePath;
+      throw new Error("\u672A\u8FD4\u56DE uploadid\uFF1A" + JSON.stringify(pj).slice(0, 200));
+    }
+    for (let seq = 0; seq < slices.length; seq++) {
+      const up = new URL(BAIDU_UPLOAD);
+      up.searchParams.set("access_token", this.token.access);
+      up.searchParams.set("type", "tmpfile");
+      up.searchParams.set("path", "/");
+      up.searchParams.set("uploadid", uploadid);
+      up.searchParams.set("partseq", String(seq));
+      const upResp = await (0, import_obsidian3.requestUrl)({
+        url: up.toString(),
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: slices[seq]
+      });
+      const uj = JSON.parse(upResp.text);
+      const uerrno = typeof uj.errno === "number" ? uj.errno : 0;
+      if (uerrno !== 0) {
+        throw new Error(`\u5206\u7247 ${seq} \u4E0A\u4F20\u5931\u8D25\uFF1A${JSON.stringify(uj).slice(0, 200)}`);
+      }
+    }
+    const cr = new URL(BAIDU_CREATE);
+    cr.searchParams.set("access_token", this.token.access);
+    cr.searchParams.set("path", remotePath);
+    cr.searchParams.set("size", String(bytes.length));
+    cr.searchParams.set("isdir", "0");
+    cr.searchParams.set("uploadid", uploadid);
+    cr.searchParams.set("block_list", JSON.stringify(blockMd5));
+    cr.searchParams.set("rtype", "1");
+    const now = Math.floor(Date.now() / 1e3);
+    cr.searchParams.set("local_ctime", String(now));
+    cr.searchParams.set("local_mtime", String(now));
+    const crResp = await (0, import_obsidian3.requestUrl)({ url: cr.toString(), method: "POST" });
+    const cj = JSON.parse(crResp.text);
+    const cerrno = typeof cj.errno === "number" ? cj.errno : 0;
+    if (cerrno !== 0) {
+      throw new Error(`create \u5931\u8D25(${cerrno}) ${(_b = BAIDU_ERRORS[cerrno]) != null ? _b : JSON.stringify(cj).slice(0, 200)}`);
+    }
+    return remotePath;
+  }
+};
+function md5hex(input) {
+  function add32(a, b) {
+    return a + b & 4294967295;
+  }
+  function rol(num, cnt) {
+    return num << cnt | num >>> 32 - cnt;
+  }
+  function cmn(q, a, b, x2, s, t) {
+    a = add32(add32(a, q), add32(x2, t));
+    return add32(rol(a, s), b);
+  }
+  function ff(a, b, c, d, x2, s, t) {
+    return cmn(b & c | ~b & d, a, b, x2, s, t);
+  }
+  function gg(a, b, c, d, x2, s, t) {
+    return cmn(b & d | c & ~d, a, b, x2, s, t);
+  }
+  function hh(a, b, c, d, x2, s, t) {
+    return cmn(b ^ c ^ d, a, b, x2, s, t);
+  }
+  function ii(a, b, c, d, x2, s, t) {
+    return cmn(c ^ (b | ~d), a, b, x2, s, t);
+  }
+  const state = [1732584193, -271733879, -1732584194, 271733878];
+  const msgLen = input.length;
+  const totalLen = ((msgLen + 8 >> 6) + 1) * 64;
+  const padded = new Uint8Array(totalLen);
+  padded.set(input);
+  padded[msgLen] = 128;
+  const view = new DataView(padded.buffer);
+  const lenBits = msgLen * 8;
+  view.setUint32(totalLen - 8, lenBits >>> 0, true);
+  view.setUint32(totalLen - 4, Math.floor(lenBits / 4294967296), true);
+  const x = new Int32Array(16);
+  for (let i = 0; i < totalLen; i += 64) {
+    for (let j = 0; j < 16; j++) x[j] = view.getInt32(i + j * 4, true);
+    let a = state[0], b = state[1], c = state[2], d = state[3];
+    a = ff(a, b, c, d, x[0], 7, -680876936);
+    d = ff(d, a, b, c, x[1], 12, -389564586);
+    c = ff(c, d, a, b, x[2], 17, 606105819);
+    b = ff(b, c, d, a, x[3], 22, -1044525330);
+    a = ff(a, b, c, d, x[4], 7, -176418897);
+    d = ff(d, a, b, c, x[5], 12, 1200080426);
+    c = ff(c, d, a, b, x[6], 17, -1473231341);
+    b = ff(b, c, d, a, x[7], 22, -45705983);
+    a = ff(a, b, c, d, x[8], 7, 1770035416);
+    d = ff(d, a, b, c, x[9], 12, -1958414417);
+    c = ff(c, d, a, b, x[10], 17, -42063);
+    b = ff(b, c, d, a, x[11], 22, -1990404162);
+    a = ff(a, b, c, d, x[12], 7, 1804603682);
+    d = ff(d, a, b, c, x[13], 12, -40341101);
+    c = ff(c, d, a, b, x[14], 17, -1502002290);
+    b = ff(b, c, d, a, x[15], 22, 1236535329);
+    a = gg(a, b, c, d, x[1], 5, -165796510);
+    d = gg(d, a, b, c, x[6], 9, -1069501632);
+    c = gg(c, d, a, b, x[11], 14, 643717713);
+    b = gg(b, c, d, a, x[0], 20, -373897302);
+    a = gg(a, b, c, d, x[5], 5, -701558691);
+    d = gg(d, a, b, c, x[10], 9, 38016083);
+    c = gg(c, d, a, b, x[15], 14, -660478335);
+    b = gg(b, c, d, a, x[4], 20, -405537848);
+    a = gg(a, b, c, d, x[9], 5, 568446438);
+    d = gg(d, a, b, c, x[14], 9, -1019803690);
+    c = gg(c, d, a, b, x[3], 14, -187363961);
+    b = gg(b, c, d, a, x[8], 20, 1163531501);
+    a = gg(a, b, c, d, x[13], 5, -1444681467);
+    d = gg(d, a, b, c, x[2], 9, -51403784);
+    c = gg(c, d, a, b, x[7], 14, 1735328473);
+    b = gg(b, c, d, a, x[12], 20, -1926607734);
+    a = hh(a, b, c, d, x[5], 4, -378558);
+    d = hh(d, a, b, c, x[8], 11, -2022574463);
+    c = hh(c, d, a, b, x[11], 16, 1839030562);
+    b = hh(b, c, d, a, x[14], 23, -35309556);
+    a = hh(a, b, c, d, x[1], 4, -1530992060);
+    d = hh(d, a, b, c, x[4], 11, 1272893353);
+    c = hh(c, d, a, b, x[7], 16, -155497632);
+    b = hh(b, c, d, a, x[10], 23, -1094730640);
+    a = hh(a, b, c, d, x[13], 4, 681279174);
+    d = hh(d, a, b, c, x[0], 11, -358537222);
+    c = hh(c, d, a, b, x[3], 16, -722521979);
+    b = hh(b, c, d, a, x[6], 23, 76029189);
+    a = hh(a, b, c, d, x[9], 4, -640364487);
+    d = hh(d, a, b, c, x[12], 11, -421815835);
+    c = hh(c, d, a, b, x[15], 16, 530742520);
+    b = hh(b, c, d, a, x[2], 23, -995338651);
+    a = ii(a, b, c, d, x[0], 6, -198630844);
+    d = ii(d, a, b, c, x[7], 10, 1126891415);
+    c = ii(c, d, a, b, x[14], 15, -1416354905);
+    b = ii(b, c, d, a, x[5], 21, -57434055);
+    a = ii(a, b, c, d, x[12], 6, 1700485571);
+    d = ii(d, a, b, c, x[3], 10, -1894986606);
+    c = ii(c, d, a, b, x[10], 15, -1051523);
+    b = ii(b, c, d, a, x[1], 21, -2054922799);
+    a = ii(a, b, c, d, x[8], 6, 1873313359);
+    d = ii(d, a, b, c, x[15], 10, -30611744);
+    c = ii(c, d, a, b, x[6], 15, -1560198380);
+    b = ii(b, c, d, a, x[13], 21, 1309151649);
+    a = ii(a, b, c, d, x[4], 6, -145523070);
+    d = ii(d, a, b, c, x[11], 10, -1120210379);
+    c = ii(c, d, a, b, x[2], 15, 718787259);
+    b = ii(b, c, d, a, x[9], 21, -343485551);
+    state[0] = add32(state[0], a);
+    state[1] = add32(state[1], b);
+    state[2] = add32(state[2], c);
+    state[3] = add32(state[3], d);
+  }
+  function toHex(n) {
+    let s = "";
+    for (let i = 0; i < 4; i++) {
+      const v = n >>> i * 8 & 255;
+      s += v.toString(16).padStart(2, "0");
+    }
+    return s;
+  }
+  return toHex(state[0]) + toHex(state[1]) + toHex(state[2]) + toHex(state[3]);
+}
 
 // src/main.ts
 var DEFAULT_BASE = "https://open.looki.tech/api/v1";
@@ -224,11 +565,17 @@ var DEFAULT_SETTINGS = {
   syncVideos: false,
   backfillDays: 1,
   syncInterval: 30,
-  syncOnStartup: false
+  syncOnStartup: false,
+  syncBaidu: false,
+  keepLocalCopy: false,
+  baiduClientId: "",
+  baiduClientSecret: "",
+  baiduRemoteDir: "/LookiSync/media"
 };
-var LookiSyncPlugin = class extends import_obsidian3.Plugin {
+var LookiSyncPlugin = class extends import_obsidian4.Plugin {
   constructor() {
     super(...arguments);
+    this.baiduToken = null;
     this.autoTimer = null;
     this.statusBar = null;
   }
@@ -252,22 +599,23 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
   }
   // ---------- 数据读写 ----------
   async loadDataAll() {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const loaded = (_a = await this.loadData()) != null ? _a : {};
     this.settings = Object.assign({}, DEFAULT_SETTINGS, (_b = loaded.settings) != null ? _b : {});
     this.state = Object.assign(
-      { syncedMoments: {}, syncedForYou: {}, lastRun: null },
+      { syncedMoments: {}, syncedForYou: {}, syncedBaidu: {}, lastRun: null },
       (_c = loaded.state) != null ? _c : {}
     );
+    this.baiduToken = (_d = loaded.baiduToken) != null ? _d : null;
   }
   async saveSettings() {
-    await this.saveData({ settings: this.settings, state: this.state });
+    await this.saveData({ settings: this.settings, state: this.state, baiduToken: this.baiduToken });
   }
   async saveDataAll() {
-    await this.saveData({ settings: this.settings, state: this.state });
+    await this.saveData({ settings: this.settings, state: this.state, baiduToken: this.baiduToken });
   }
   notice(msg) {
-    new import_obsidian3.Notice(msg);
+    new import_obsidian4.Notice(msg);
   }
   // ---------- 同步入口 ----------
   async syncNow() {
@@ -297,7 +645,7 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
     }
   }
   async fullResync() {
-    this.state = { syncedMoments: {}, syncedForYou: {}, lastRun: null };
+    this.state = { syncedMoments: {}, syncedForYou: {}, syncedBaidu: {}, lastRun: null };
     await this.saveDataAll();
     this.notice("\u5DF2\u91CD\u7F6E\u540C\u6B65\u8BB0\u5F55\uFF0C\u5F00\u59CB\u5168\u91CF\u91CD\u540C\u6B65\u2026");
     await this.syncNow();
@@ -336,6 +684,7 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
   // ---------- 媒体下载 ----------
   async downloadMedia(client, momentId, date) {
     if (!this.settings.syncImages && !this.settings.syncVideos) return [];
+    if (!this.settings.syncBaidu && !this.settings.keepLocalCopy) return [];
     const files = await client.momentFiles(momentId);
     const embeds = [];
     let i = 0;
@@ -348,41 +697,74 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
       if (mt !== "IMAGE" && mt !== "VIDEO") continue;
       i++;
       const kind = mt === "VIDEO" ? "video" : "image";
-      const relBase = `${this.settings.mediaFolder}/${date}/${momentId}_${i}`;
-      const emb = await this.downloadOne(file.temporary_url, relBase, kind);
+      const baseName = `${momentId}_${i}`;
+      const baiduKey = `moment:${date}:${momentId}:${i}`;
+      const emb = await this.downloadOne(file.temporary_url, date, baseName, kind, baiduKey);
       if (emb) embeds.push(emb);
     }
     return embeds;
   }
   async downloadForYouMedia(it, date) {
     if (!this.settings.syncImages) return [];
+    if (!this.settings.syncBaidu && !this.settings.keepLocalCopy) return [];
     const cover = it.cover;
     if ((cover == null ? void 0 : cover.media_type) === "IMAGE" && cover.temporary_url) {
-      const relBase = `${this.settings.mediaFolder}/${date}/${it.id}_cover`;
-      const emb = await this.downloadOne(cover.temporary_url, relBase, "image");
+      const baseName = `${it.id}_cover`;
+      const baiduKey = `foryou:${date}:${it.id}:cover`;
+      const emb = await this.downloadOne(cover.temporary_url, date, baseName, "image", baiduKey);
       if (emb) return [emb];
     }
     return [];
   }
-  async downloadOne(url, relBase, kind) {
+  async downloadOne(url, date, baseName, kind, baiduKey) {
     var _a;
     try {
       let ext = extFromUrl(url);
-      const relFromUrl = ext ? `${relBase}.${ext}` : "";
-      if (relFromUrl && await this.app.vault.adapter.exists(relFromUrl))
-        return this.mediaEmbed(relFromUrl, kind);
-      const resp = await (0, import_obsidian3.requestUrl)({ url, method: "GET" });
+      const finalExt = ext != null ? ext : kind === "video" ? "mp4" : "jpg";
+      const localRelPath = `${this.settings.mediaFolder}/${date}/${baseName}.${finalExt}`;
+      if (this.settings.keepLocalCopy && await this.app.vault.adapter.exists(localRelPath)) {
+        return this.mediaEmbed(localRelPath, kind);
+      }
+      const resp = await (0, import_obsidian4.requestUrl)({ url, method: "GET" });
       if (resp.status >= 400) throw new Error("HTTP " + resp.status);
       if (!ext) {
         const ct = resp.headers && (resp.headers["content-type"] || resp.headers["Content-Type"]) || "";
         ext = (_a = extFromContentType(String(ct).toLowerCase())) != null ? _a : kind === "video" ? "mp4" : "jpg";
       }
-      const relPath = `${relBase}.${ext}`;
-      await this.ensureFolder(this.dirname(relPath));
-      await this.app.vault.adapter.writeBinary(relPath, resp.arrayBuffer);
-      return this.mediaEmbed(relPath, kind);
+      const arrayBuffer = resp.arrayBuffer;
+      const realExt = ext != null ? ext : kind === "video" ? "mp4" : "jpg";
+      const localPath = `${this.settings.mediaFolder}/${date}/${baseName}.${realExt}`;
+      let baiduLine = "";
+      if (this.settings.syncBaidu && baiduKey) {
+        const dup = this.state.syncedBaidu[baiduKey];
+        if (dup) {
+          baiduLine = `\u{1F4C1} \u5DF2\u5907\u4EFD\u767E\u5EA6\u7F51\u76D8\uFF08\u5DF2\u5B58\u5728\uFF09\uFF1A${dup}`;
+        } else {
+          try {
+            const client = await this.getBaiduClient();
+            if (client) {
+              const remotePath = await client.uploadBytes(`${date}_${baseName}.${realExt}`, arrayBuffer);
+              this.state.syncedBaidu[baiduKey] = remotePath;
+              baiduLine = `\u{1F4C1} \u5DF2\u5907\u4EFD\u767E\u5EA6\u7F51\u76D8\uFF1A${remotePath}`;
+              await this.saveDataAll();
+            } else {
+              baiduLine = "\u26A0\uFE0F \u767E\u5EA6\u7F51\u76D8\u672A\u6388\u6743\uFF0C\u8DF3\u8FC7\u5907\u4EFD";
+            }
+          } catch (e) {
+            console.warn("\u767E\u5EA6\u4E0A\u4F20\u5931\u8D25", url, e);
+            baiduLine = `\u26A0\uFE0F \u767E\u5EA6\u5907\u4EFD\u5931\u8D25\uFF1A${e.message}`;
+          }
+        }
+      }
+      if (this.settings.keepLocalCopy) {
+        await this.ensureFolder(this.dirname(localPath));
+        await this.app.vault.adapter.writeBinary(localPath, arrayBuffer);
+        const localEmbed = this.mediaEmbed(localPath, kind);
+        return [localEmbed, baiduLine].filter(Boolean).join("\n");
+      }
+      return baiduLine || null;
     } catch (e) {
-      console.warn("Looki \u5A92\u4F53\u4E0B\u8F7D\u5931\u8D25", url, e);
+      console.warn("Looki \u5A92\u4F53\u5904\u7406\u5931\u8D25", url, e);
       return null;
     }
   }
@@ -407,6 +789,76 @@ var LookiSyncPlugin = class extends import_obsidian3.Plugin {
         }
       }
     }
+  }
+  // ---------- 百度网盘 ----------
+  openExternal(url) {
+    try {
+      const w = window;
+      if (typeof w.require === "function") {
+        const electron = w.require("electron");
+        if (electron && electron.shell) {
+          electron.shell.openExternal(url);
+          return;
+        }
+      }
+    } catch (e) {
+    }
+    window.open(url, "_blank");
+  }
+  async openBaiduAuth() {
+    if (!this.settings.baiduClientId) {
+      this.notice("\u8BF7\u5148\u586B\u5199\u767E\u5EA6 API Key");
+      return;
+    }
+    const url = buildBaiduAuthUrl(this.settings.baiduClientId, "looki-sync-obsidian");
+    this.openExternal(url);
+    this.notice("\u5DF2\u6253\u5F00\u767E\u5EA6\u6388\u6743\u9875\uFF0C\u767B\u5F55\u5E76\u300C\u540C\u610F\u300D\u540E\u590D\u5236\u5730\u5740\u680F ?code= \u540E\u7684\u5185\u5BB9");
+  }
+  async baiduExchange(code) {
+    if (!this.settings.baiduClientId || !this.settings.baiduClientSecret) {
+      throw new Error("\u8BF7\u5148\u586B\u5199\u767E\u5EA6 API Key / Secret");
+    }
+    const tok = await exchangeCodeForToken(
+      code.trim(),
+      this.settings.baiduClientId,
+      this.settings.baiduClientSecret,
+      "looki-sync-obsidian"
+    );
+    this.baiduToken = tok;
+    await this.saveDataAll();
+  }
+  baiduTokenStatus() {
+    if (!this.baiduToken) return "\u672A\u6388\u6743\uFF08\u70B9\u4E0A\u65B9\u300C\u6253\u5F00\u6388\u6743\u9875\u300D\u5B8C\u6210\u6388\u6743\uFF09";
+    if (Date.now() > this.baiduToken.expiresAt) return "\u5DF2\u6388\u6743\uFF0C\u4F46 token \u5DF2\u8FC7\u671F\uFF0C\u4E0B\u6B21\u540C\u6B65\u4F1A\u81EA\u52A8\u5237\u65B0";
+    const exp = new Date(this.baiduToken.expiresAt).toLocaleString();
+    return `\u5DF2\u6388\u6743\uFF0C\u6709\u6548\u671F\u81F3 ${exp}`;
+  }
+  async getBaiduClient() {
+    if (!this.baiduToken) {
+      this.notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u5B8C\u6210\u767E\u5EA6\u7F51\u76D8\u6388\u6743");
+      return null;
+    }
+    if (!this.settings.baiduClientId || !this.settings.baiduClientSecret) {
+      this.notice("\u8BF7\u5148\u586B\u5199\u767E\u5EA6 API Key / Secret");
+      return null;
+    }
+    const client = new BaiduClient(
+      this.baiduToken,
+      this.settings.baiduClientId,
+      this.settings.baiduClientSecret,
+      this.settings.baiduRemoteDir || "/LookiSync/media",
+      "looki-sync-obsidian",
+      (t) => {
+        this.baiduToken = t;
+        this.saveDataAll();
+      }
+    );
+    try {
+      await client.ensureRemoteDir();
+    } catch (e) {
+      console.warn("\u767E\u5EA6\u5EFA\u76EE\u5F55\u5931\u8D25", e);
+    }
+    return client;
   }
   // ---------- 数据获取辅助 ----------
   targetDates() {

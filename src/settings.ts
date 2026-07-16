@@ -3,6 +3,7 @@ import LookiSyncPlugin from "./main";
 
 export class LookiSettingTab extends PluginSettingTab {
   plugin: LookiSyncPlugin;
+  private baiduCodeInput = "";
 
   constructor(app: App, plugin: LookiSyncPlugin) {
     super(app, plugin);
@@ -159,5 +160,110 @@ export class LookiSettingTab extends PluginSettingTab {
           await this.plugin.fullResync();
         })
       );
+
+    // ---------- 百度网盘备份 ----------
+    new Setting(containerEl).setName("百度网盘备份").setHeading();
+
+    new Setting(containerEl)
+      .setName("同步到百度网盘")
+      .setDesc("把 Looki 图片/视频上传到你的百度网盘做备份（vault 不保留本地文件）")
+      .addToggle((t) =>
+        t.setValue(s.syncBaidu).onChange(async (v) => {
+          s.syncBaidu = v;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName("保留本地副本")
+      .setDesc("同时把媒体存进 vault（笔记里能显示图片）。关闭 = 只传百度、vault 不留（省 iCloud 空间）")
+      .addToggle((t) =>
+        t.setValue(s.keepLocalCopy).onChange(async (v) => {
+          s.keepLocalCopy = v;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName("百度 API Key")
+      .setDesc("百度网盘开放平台的 AppKey（client_id）")
+      .addText((t) =>
+        t
+          .setPlaceholder("AppKey")
+          .setValue(s.baiduClientId)
+          .onChange(async (v) => {
+            s.baiduClientId = v.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("百度 Secret Key")
+      .setDesc("百度网盘开放平台的 Secretkey（client_secret）")
+      .addText((t) =>
+        t
+          .setPlaceholder("Secretkey")
+          .setValue(s.baiduClientSecret)
+          .onChange(async (v) => {
+            s.baiduClientSecret = v.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("百度网盘目录")
+      .setDesc("媒体上传到的百度网盘路径（默认 /LookiSync/media）")
+      .addText((t) =>
+        t
+          .setPlaceholder("/LookiSync/media")
+          .setValue(s.baiduRemoteDir)
+          .onChange(async (v) => {
+            s.baiduRemoteDir = v.trim() || "/LookiSync/media";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("授权百度网盘")
+      .setDesc("① 点“打开授权页”登录并同意 → 浏览器地址栏显示 ?code=xxx → 复制 → 粘贴到下方 → 点“完成授权”")
+      .addButton((b) =>
+        b.setButtonText("① 打开授权页").onClick(async () => {
+          await this.plugin.openBaiduAuth();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName("粘贴授权 code")
+      .addText((t) =>
+        t
+          .setPlaceholder("code= 后面的字符串")
+          .setValue(this.baiduCodeInput)
+          .onChange(async (v) => {
+            this.baiduCodeInput = v.trim();
+          })
+      )
+      .addButton((b) =>
+        b
+          .setButtonText("③ 完成授权")
+          .setCta()
+          .onClick(async () => {
+            if (!this.baiduCodeInput) {
+              this.plugin.notice("请先粘贴 code");
+              return;
+            }
+            try {
+              await this.plugin.baiduExchange(this.baiduCodeInput);
+              this.baiduCodeInput = "";
+              this.plugin.notice("百度授权成功 ✅");
+              this.display();
+            } catch (e) {
+              this.plugin.notice("授权失败：" + e.message);
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("授权状态")
+      .setDesc(this.plugin.baiduTokenStatus());
   }
 }

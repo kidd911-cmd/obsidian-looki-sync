@@ -8,6 +8,12 @@ import {
   LookiForYouItem,
 } from "./looki";
 import { LookiSettingTab } from "./settings";
+import {
+  BaiduClient,
+  BaiduToken,
+  buildBaiduAuthUrl,
+  exchangeCodeForToken,
+} from "./baidu";
 
 const DEFAULT_BASE = "https://open.looki.tech/api/v1";
 const DEFAULT_NOTES = "Looki/每日记忆";
@@ -23,6 +29,11 @@ export interface LookiSettings {
   backfillDays: number;
   syncInterval: number; // 分钟, 0 = 关闭
   syncOnStartup: boolean;
+  syncBaidu: boolean;
+  keepLocalCopy: boolean;
+  baiduClientId: string;
+  baiduClientSecret: string;
+  baiduRemoteDir: string;
 }
 
 const DEFAULT_SETTINGS: LookiSettings = {
@@ -35,21 +46,29 @@ const DEFAULT_SETTINGS: LookiSettings = {
   backfillDays: 1,
   syncInterval: 30,
   syncOnStartup: false,
+  syncBaidu: false,
+  keepLocalCopy: false,
+  baiduClientId: "",
+  baiduClientSecret: "",
+  baiduRemoteDir: "/LookiSync/media",
 };
 
 interface SyncState {
   syncedMoments: Record<string, string>;
   syncedForYou: Record<string, string>;
+  syncedBaidu: Record<string, string>;
   lastRun: string | null;
 }
 
 interface PluginData {
   settings: LookiSettings;
   state: SyncState;
+  baiduToken: BaiduToken | null;
 }
 
 export default class LookiSyncPlugin extends Plugin {
   settings: LookiSettings;
+  baiduToken: BaiduToken | null = null;
   private state: SyncState;
   private autoTimer: number | null = null;
   private statusBar: HTMLElement | null = null;
@@ -79,17 +98,18 @@ export default class LookiSyncPlugin extends Plugin {
     const loaded = ((await this.loadData()) as PluginData) ?? ({} as PluginData);
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded.settings ?? {});
     this.state = Object.assign(
-      { syncedMoments: {}, syncedForYou: {}, lastRun: null },
+      { syncedMoments: {}, syncedForYou: {}, syncedBaidu: {}, lastRun: null },
       loaded.state ?? {}
     );
+    this.baiduToken = loaded.baiduToken ?? null;
   }
 
   async saveSettings(): Promise<void> {
-    await this.saveData({ settings: this.settings, state: this.state });
+    await this.saveData({ settings: this.settings, state: this.state, baiduToken: this.baiduToken });
   }
 
   private async saveDataAll(): Promise<void> {
-    await this.saveData({ settings: this.settings, state: this.state });
+    await this.saveData({ settings: this.settings, state: this.state, baiduToken: this.baiduToken });
   }
 
   notice(msg: string): void {
@@ -124,7 +144,7 @@ export default class LookiSyncPlugin extends Plugin {
   }
 
   async fullResync(): Promise<void> {
-    this.state = { syncedMoments: {}, syncedForYou: {}, lastRun: null };
+    this.state = { syncedMoments: {}, syncedForYou: {}, syncedBaidu: {}, lastRun: null };
     await this.saveDataAll();
     this.notice("已重置同步记录，开始全量重同步…");
     await this.syncNow();
@@ -170,6 +190,7 @@ export default class LookiSyncPlugin extends Plugin {
   // ---------- 媒体下载 ----------
   private async downloadMedia(client: LookiClient, momentId: string, date: string): Promise<string[]> {
     if (!this.settings.syncImages && !this.settings.syncVideos) return [];
+    if (!this.settings.syncBaidu && !this.settings.keepLocalCopy) return [];
     const files = await client.momentFiles(momentId);
     const embeds: string[] = [];
     let i = 0;
@@ -182,8 +203,9 @@ export default class LookiSyncPlugin extends Plugin {
       if (mt !== "IMAGE" && mt !== "VIDEO") continue;
       i++;
       const kind: "image" | "video" = mt === "VIDEO" ? "video" : "image";
-      const relBase = `${this.settings.mediaFolder}/${date}/${momentId}_${i}`;
-      const emb = await this.downloadOne(file.temporary_url, relBase, kind);
+      const baseName = `${momentId}_${i}`;
+      const baiduKey = `moment:${date}:${momentId}:${i}`;
+      const emb = await this.downloadOne(file.temporary_url, date, baseName, kind, baiduKey);
       if (emb) embeds.push(emb);
     }
     return embeds;
@@ -191,21 +213,32 @@ export default class LookiSyncPlugin extends Plugin {
 
   private async downloadForYouMedia(it: LookiForYouItem, date: string): Promise<string[]> {
     if (!this.settings.syncImages) return [];
+    if (!this.settings.syncBaidu && !this.settings.keepLocalCopy) return [];
     const cover = it.cover;
     if (cover?.media_type === "IMAGE" && cover.temporary_url) {
-      const relBase = `${this.settings.mediaFolder}/${date}/${it.id}_cover`;
-      const emb = await this.downloadOne(cover.temporary_url, relBase, "image");
+      const baseName = `${it.id}_cover`;
+      const baiduKey = `foryou:${date}:${it.id}:cover`;
+      const emb = await this.downloadOne(cover.temporary_url, date, baseName, "image", baiduKey);
       if (emb) return [emb];
     }
     return [];
   }
 
-  private async downloadOne(url: string, relBase: string, kind: "image" | "video"): Promise<string | null> {
+  private async downloadOne(
+    url: string,
+    date: string,
+    baseName: string,
+    kind: "image" | "video",
+    baiduKey: string
+  ): Promise<string | null> {
     try {
       let ext = extFromUrl(url);
-      const relFromUrl = ext ? `${relBase}.${ext}` : "";
-      if (relFromUrl && (await this.app.vault.adapter.exists(relFromUrl)))
-        return this.mediaEmbed(relFromUrl, kind);
+      const finalExt = ext ?? (kind === "video" ? "mp4" : "jpg");
+      const localRelPath = `${this.settings.mediaFolder}/${date}/${baseName}.${finalExt}`;
+      // 本地已存在且需要本地副本 → 直接复用，跳过下载/上传
+      if (this.settings.keepLocalCopy && (await this.app.vault.adapter.exists(localRelPath))) {
+        return this.mediaEmbed(localRelPath, kind);
+      }
       const resp = await requestUrl({ url, method: "GET" });
       if (resp.status >= 400) throw new Error("HTTP " + resp.status);
       if (!ext) {
@@ -213,12 +246,44 @@ export default class LookiSyncPlugin extends Plugin {
           (resp.headers && (resp.headers["content-type"] || resp.headers["Content-Type"])) || "";
         ext = extFromContentType(String(ct).toLowerCase()) ?? (kind === "video" ? "mp4" : "jpg");
       }
-      const relPath = `${relBase}.${ext}`;
-      await this.ensureFolder(this.dirname(relPath));
-      await this.app.vault.adapter.writeBinary(relPath, resp.arrayBuffer);
-      return this.mediaEmbed(relPath, kind);
+      const arrayBuffer = resp.arrayBuffer;
+      const realExt = ext ?? (kind === "video" ? "mp4" : "jpg");
+      const localPath = `${this.settings.mediaFolder}/${date}/${baseName}.${realExt}`;
+
+      // 百度网盘备份（不落本地）
+      let baiduLine = "";
+      if (this.settings.syncBaidu && baiduKey) {
+        const dup = this.state.syncedBaidu[baiduKey];
+        if (dup) {
+          baiduLine = `📁 已备份百度网盘（已存在）：${dup}`;
+        } else {
+          try {
+            const client = await this.getBaiduClient();
+            if (client) {
+              const remotePath = await client.uploadBytes(`${date}_${baseName}.${realExt}`, arrayBuffer);
+              this.state.syncedBaidu[baiduKey] = remotePath;
+              baiduLine = `📁 已备份百度网盘：${remotePath}`;
+              await this.saveDataAll();
+            } else {
+              baiduLine = "⚠️ 百度网盘未授权，跳过备份";
+            }
+          } catch (e) {
+            console.warn("百度上传失败", url, e);
+            baiduLine = `⚠️ 百度备份失败：${e.message}`;
+          }
+        }
+      }
+
+      // 本地副本（笔记可显示图片）
+      if (this.settings.keepLocalCopy) {
+        await this.ensureFolder(this.dirname(localPath));
+        await this.app.vault.adapter.writeBinary(localPath, arrayBuffer);
+        const localEmbed = this.mediaEmbed(localPath, kind);
+        return [localEmbed, baiduLine].filter(Boolean).join("\n");
+      }
+      return baiduLine || null;
     } catch (e) {
-      console.warn("Looki 媒体下载失败", url, e);
+      console.warn("Looki 媒体处理失败", url, e);
       return null;
     }
   }
@@ -247,6 +312,82 @@ export default class LookiSyncPlugin extends Plugin {
         }
       }
     }
+  }
+
+  // ---------- 百度网盘 ----------
+  private openExternal(url: string): void {
+    try {
+      const w = window as unknown as { require?: (m: string) => any };
+      if (typeof w.require === "function") {
+        const electron = w.require("electron");
+        if (electron && electron.shell) {
+          electron.shell.openExternal(url);
+          return;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    window.open(url, "_blank");
+  }
+
+  async openBaiduAuth(): Promise<void> {
+    if (!this.settings.baiduClientId) {
+      this.notice("请先填写百度 API Key");
+      return;
+    }
+    const url = buildBaiduAuthUrl(this.settings.baiduClientId, "looki-sync-obsidian");
+    this.openExternal(url);
+    this.notice("已打开百度授权页，登录并「同意」后复制地址栏 ?code= 后的内容");
+  }
+
+  async baiduExchange(code: string): Promise<void> {
+    if (!this.settings.baiduClientId || !this.settings.baiduClientSecret) {
+      throw new Error("请先填写百度 API Key / Secret");
+    }
+    const tok = await exchangeCodeForToken(
+      code.trim(),
+      this.settings.baiduClientId,
+      this.settings.baiduClientSecret,
+      "looki-sync-obsidian"
+    );
+    this.baiduToken = tok;
+    await this.saveDataAll();
+  }
+
+  baiduTokenStatus(): string {
+    if (!this.baiduToken) return "未授权（点上方「打开授权页」完成授权）";
+    if (Date.now() > this.baiduToken.expiresAt) return "已授权，但 token 已过期，下次同步会自动刷新";
+    const exp = new Date(this.baiduToken.expiresAt).toLocaleString();
+    return `已授权，有效期至 ${exp}`;
+  }
+
+  private async getBaiduClient(): Promise<BaiduClient | null> {
+    if (!this.baiduToken) {
+      this.notice("请先在设置中完成百度网盘授权");
+      return null;
+    }
+    if (!this.settings.baiduClientId || !this.settings.baiduClientSecret) {
+      this.notice("请先填写百度 API Key / Secret");
+      return null;
+    }
+    const client = new BaiduClient(
+      this.baiduToken,
+      this.settings.baiduClientId,
+      this.settings.baiduClientSecret,
+      this.settings.baiduRemoteDir || "/LookiSync/media",
+      "looki-sync-obsidian",
+      (t) => {
+        this.baiduToken = t;
+        this.saveDataAll();
+      }
+    );
+    try {
+      await client.ensureRemoteDir();
+    } catch (e) {
+      console.warn("百度建目录失败", e);
+    }
+    return client;
   }
 
   // ---------- 数据获取辅助 ----------

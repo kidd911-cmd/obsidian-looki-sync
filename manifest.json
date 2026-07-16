@@ -1,9 +1,9 @@
 {
   "id": "looki-sync",
   "name": "Looki Sync",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "minAppVersion": "1.1.0",
-  "description": "Sync Looki Moments and For You into daily memory notes, with optional image/video sync.",
+  "description": "Sync Looki Moments and For You into daily memory notes, with optional image/video sync and Baidu Netdisk backup.",
   "author": "Jeremy Jin",
   "authorUrl": "https://github.com/Kidd911-cmd",
   "isDesktopOnly": false
