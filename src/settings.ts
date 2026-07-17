@@ -57,7 +57,9 @@ export class LookiSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("媒体文件夹")
-      .setDesc("图片/视频下载保存的 vault 内相对路径（媒体开关开启时生效）")
+      .setDesc(
+        "图片/视频下载保存的 vault 内相对路径（媒体开关开启时生效）。如需把视频备份到百度网盘，可在电脑百度网盘客户端把这个文件夹（vault 中对应的实际目录，例如 Looki/media）设为「同步文件夹」，客户端会自动上传到网盘。"
+      )
       .addText((t) =>
         t
           .setPlaceholder("Looki/media")

@@ -149,7 +149,9 @@ var LookiSettingTab = class extends import_obsidian2.PluginSettingTab {
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian2.Setting(containerEl).setName("\u5A92\u4F53\u6587\u4EF6\u5939").setDesc("\u56FE\u7247/\u89C6\u9891\u4E0B\u8F7D\u4FDD\u5B58\u7684 vault \u5185\u76F8\u5BF9\u8DEF\u5F84\uFF08\u5A92\u4F53\u5F00\u5173\u5F00\u542F\u65F6\u751F\u6548\uFF09").addText(
+    new import_obsidian2.Setting(containerEl).setName("\u5A92\u4F53\u6587\u4EF6\u5939").setDesc(
+      "\u56FE\u7247/\u89C6\u9891\u4E0B\u8F7D\u4FDD\u5B58\u7684 vault \u5185\u76F8\u5BF9\u8DEF\u5F84\uFF08\u5A92\u4F53\u5F00\u5173\u5F00\u542F\u65F6\u751F\u6548\uFF09\u3002\u5982\u9700\u628A\u89C6\u9891\u5907\u4EFD\u5230\u767E\u5EA6\u7F51\u76D8\uFF0C\u53EF\u5728\u7535\u8111\u767E\u5EA6\u7F51\u76D8\u5BA2\u6237\u7AEF\u628A\u8FD9\u4E2A\u6587\u4EF6\u5939\uFF08vault \u4E2D\u5BF9\u5E94\u7684\u5B9E\u9645\u76EE\u5F55\uFF0C\u4F8B\u5982 Looki/media\uFF09\u8BBE\u4E3A\u300C\u540C\u6B65\u6587\u4EF6\u5939\u300D\uFF0C\u5BA2\u6237\u7AEF\u4F1A\u81EA\u52A8\u4E0A\u4F20\u5230\u7F51\u76D8\u3002"
+    ).addText(
       (t) => t.setPlaceholder("Looki/media").setValue(s.mediaFolder).onChange(async (v) => {
         s.mediaFolder = v.trim() || "Looki/media";
         await this.plugin.saveSettings();
